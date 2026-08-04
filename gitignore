@@ -1,0 +1,47 @@
+# -------------------------------------------------
+# Python
+# -------------------------------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE settings
+.vscode/
+.idea/
+
+# Operating system files
+.DS_Store
+Thumbs.db
+
+# -------------------------------------------------
+# Project logs
+# -------------------------------------------------
+logs/
+*.log
+
+# -------------------------------------------------
+# Generated data
+# -------------------------------------------------
+data/output/
+data/processed/
+
+# Keep the folder structure but not the generated files
+!data/output/.gitkeep
+!data/processed/.gitkeep
+
+# -------------------------------------------------
+# Test and coverage reports
+# -------------------------------------------------
+.pytest_cache/
+.coverage
+htmlcov/
+
+# -------------------------------------------------
+# Jupyter notebooks
+# -------------------------------------------------
+.ipynb_checkpoints/
