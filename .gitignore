@@ -24,6 +24,9 @@ Thumbs.db
 logs/
 *.log
 
+# Keep the logs directory
+!logs/.gitkeep
+
 # -------------------------------------------------
 # Generated data
 # -------------------------------------------------
