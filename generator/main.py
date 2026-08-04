@@ -2,8 +2,8 @@
 Project entry point.
 """
 
-from config import Config
-
+# from config import Config
+from generator.config import Config
 
 def main():
 
