@@ -7,7 +7,7 @@ logger = get_logger(__name__)
 def main():
 
     Config.create_directories()
-
+    # print(Config.LOGS)
     logger.info("=" * 70)
     logger.info("Enterprise SAS → Python Migration")
     logger.info("=" * 70)
