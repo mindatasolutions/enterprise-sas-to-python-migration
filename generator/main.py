@@ -1,27 +1,23 @@
-"""
-Project entry point.
-"""
-
-# from config import Config
 from generator.config import Config
+from generator.logger import get_logger
+
+logger = get_logger(__name__)
+
 
 def main():
 
-    print("=" * 60)
+    Config.create_directories()
 
-    print("Enterprise SAS -> Python Migration")
+    logger.info("=" * 70)
+    logger.info("Enterprise SAS → Python Migration")
+    logger.info("=" * 70)
 
-    print("=" * 60)
+    logger.info("Project Root : %s", Config.ROOT)
+    logger.info("Raw Data     : %s", Config.RAW_DATA)
+    logger.info("Processed    : %s", Config.PROCESSED_DATA)
+    logger.info("Output       : %s", Config.OUTPUT)
 
-    print(f"Project Root : {Config.ROOT}")
-
-    print(f"Raw Data     : {Config.RAW_DATA}")
-
-    print(f"Output       : {Config.OUTPUT}")
-
-    print()
-
-    print("Configuration loaded successfully.")
+    logger.info("Application started successfully.")
 
 
 if __name__ == "__main__":
