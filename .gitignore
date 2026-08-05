@@ -21,8 +21,8 @@ Thumbs.db
 # -------------------------------------------------
 # Project logs
 # -------------------------------------------------
-logs/
-*.log
+# logs/
+# *.log
 
 # Keep the logs directory
 !logs/.gitkeep
