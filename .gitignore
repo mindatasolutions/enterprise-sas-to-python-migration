@@ -19,12 +19,6 @@ env/
 Thumbs.db
 
 # -------------------------------------------------
-# Project logs
-# -------------------------------------------------
-logs/*.log
-!logs/.gitkeep
-
-# -------------------------------------------------
 # Generated data
 # -------------------------------------------------
 data/output/
@@ -45,3 +39,22 @@ htmlcov/
 # Jupyter notebooks
 # -------------------------------------------------
 .ipynb_checkpoints/
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Generated data
+data/raw/*
+data/processed/*
+data/output/*
+
+# Keep directory structure
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!data/output/.gitkeep
+
+# Logs
+logs/*.log
+!logs/.gitkeep
+*.log
