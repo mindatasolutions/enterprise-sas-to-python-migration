@@ -1,7 +1,8 @@
 from generator.config import Config
 from generator.logger import get_logger
 from generator.patients import PatientGenerator
-
+from generator.providers import ProviderGenerator
+from generator.claims import ClaimsGenerator
 
 logger = get_logger(__name__)
 
@@ -20,6 +21,10 @@ def main():
     logger.info("Output       : %s", Config.OUTPUT)
 
     PatientGenerator().generate()
+
+    ProviderGenerator().generate()
+
+    ClaimsGenerator().generate()
 
     logger.info("Application completed successfully.")
 
