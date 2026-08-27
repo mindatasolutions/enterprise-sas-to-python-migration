@@ -1,27 +1,48 @@
 """
-Compare SAS and Python output datasets.
+Reusable SAS vs Python reconciliation framework.
 """
+
+import argparse
+from pathlib import Path
 
 import pandas as pd
 
-from generator.config import Config
-
 
 def reconcile_outputs(
-    sas_file,
-    python_file,
-    key_column="claim_id",
-):
+    sas_file: Path,
+    python_file: Path,
+    key_column: str,
+) -> None:
     """
     Compare SAS and Python output datasets.
+
+    Parameters
+    ----------
+    sas_file : Path
+        SAS output file.
+
+    python_file : Path
+        Python output file.
+
+    key_column : str
+        Unique key used to align records.
     """
 
     print("=" * 70)
     print("SAS vs PYTHON RECONCILIATION")
     print("=" * 70)
 
+    # ---------------------------------------------------------
+    # Load data
+    # ---------------------------------------------------------
+
     sas = pd.read_csv(sas_file)
     python = pd.read_csv(python_file)
+
+    print()
+    print("Files:")
+    print(f"SAS    : {sas_file}")
+    print(f"Python : {python_file}")
 
     print()
     print("Dataset sizes:")
@@ -32,41 +53,66 @@ def reconcile_outputs(
     # 1. Row count
     # ---------------------------------------------------------
 
-    assert len(sas) == len(python), (
-        "Row counts do not match"
-    )
+    if len(sas) != len(python):
+        raise AssertionError(
+            "Row counts do not match"
+        )
 
     print("✓ Row count matched")
 
     # ---------------------------------------------------------
-    # 2. Column names
+    # 2. Column structure
     # ---------------------------------------------------------
 
-    sas_columns = list(sas.columns)
-    python_columns = list(python.columns)
+    if list(sas.columns) != list(python.columns):
+        print()
+        print("SAS columns:")
+        print(list(sas.columns))
 
-    assert sas_columns == python_columns, (
-        "Column structures do not match"
-    )
+        print()
+        print("Python columns:")
+        print(list(python.columns))
+
+        raise AssertionError(
+            "Column structures do not match"
+        )
 
     print("✓ Column structure matched")
 
     # ---------------------------------------------------------
-    # 3. Key uniqueness
+    # 3. Key existence
     # ---------------------------------------------------------
 
-    assert not sas[key_column].duplicated().any(), (
-        f"Duplicate {key_column} values in SAS output"
-    )
+    if key_column not in sas.columns:
+        raise AssertionError(
+            f"{key_column} not found in SAS output"
+        )
 
-    assert not python[key_column].duplicated().any(), (
-        f"Duplicate {key_column} values in Python output"
-    )
-
-    print(f"✓ {key_column} uniqueness passed")
+    if key_column not in python.columns:
+        raise AssertionError(
+            f"{key_column} not found in Python output"
+        )
 
     # ---------------------------------------------------------
-    # 4. Key comparison
+    # 4. Key uniqueness
+    # ---------------------------------------------------------
+
+    if sas[key_column].duplicated().any():
+        raise AssertionError(
+            f"Duplicate {key_column} values in SAS output"
+        )
+
+    if python[key_column].duplicated().any():
+        raise AssertionError(
+            f"Duplicate {key_column} values in Python output"
+        )
+
+    print(
+        f"✓ {key_column} uniqueness passed"
+    )
+
+    # ---------------------------------------------------------
+    # 5. Key comparison
     # ---------------------------------------------------------
 
     sas_keys = set(sas[key_column])
@@ -75,21 +121,23 @@ def reconcile_outputs(
     sas_only = sas_keys - python_keys
     python_only = python_keys - sas_keys
 
-    print(f"SAS-only keys    : {len(sas_only):,}")
-    print(f"Python-only keys : {len(python_only):,}")
-
-    assert len(sas_only) == 0, (
-        "Keys exist in SAS but not Python"
+    print(
+        f"SAS-only keys    : {len(sas_only):,}"
     )
 
-    assert len(python_only) == 0, (
-        "Keys exist in Python but not SAS"
+    print(
+        f"Python-only keys : {len(python_only):,}"
     )
+
+    if sas_only or python_only:
+        raise AssertionError(
+            "Key values do not match"
+        )
 
     print("✓ Key values matched")
 
     # ---------------------------------------------------------
-    # 5. Sort both datasets by key
+    # 6. Sort by key
     # ---------------------------------------------------------
 
     sas = sas.sort_values(
@@ -101,18 +149,20 @@ def reconcile_outputs(
     ).reset_index(drop=True)
 
     # ---------------------------------------------------------
-    # 6. Compare individual columns
+    # 7. Compare values
     # ---------------------------------------------------------
 
     differences = []
 
-    for column in sas_columns:
+    for column in sas.columns:
+
+        if column == key_column:
+            continue
 
         sas_series = sas[column]
         python_series = python[column]
 
-        # Convert both sides to string for character comparison.
-        # This avoids false differences caused by pandas dtypes.
+        # Character columns
         if (
             sas_series.dtype == "object"
             or python_series.dtype == "object"
@@ -130,63 +180,66 @@ def reconcile_outputs(
                 .astype(str)
             )
 
-            mismatch = sas_values != python_values
+            mismatch = (
+                sas_values != python_values
+            )
 
-        else:
+        # Numeric columns
+        elif (
+            pd.api.types.is_numeric_dtype(
+                sas_series
+            )
+            and pd.api.types.is_numeric_dtype(
+                python_series
+            )
+        ):
 
-            # Numeric comparison with a small tolerance.
-            if (
-                pd.api.types.is_numeric_dtype(sas_series)
-                and pd.api.types.is_numeric_dtype(
+            mismatch = ~(
+                sas_series.eq(
                     python_series
                 )
-            ):
-
-                mismatch = ~(
-                    sas_series.eq(
-                        python_series
-                    )
-                    | (
-                        sas_series
-                        .sub(python_series)
-                        .abs()
-                        < 1e-9
-                    )
-                    | (
-                        sas_series.isna()
-                        & python_series.isna()
-                    )
+                | (
+                    sas_series
+                    .sub(python_series)
+                    .abs()
+                    < 1e-9
                 )
-
-            else:
-
-                mismatch = (
-                    sas_series != python_series
+                | (
+                    sas_series.isna()
+                    & python_series.isna()
                 )
+            )
 
-                mismatch = (
-                    mismatch
-                    & ~(
-                        sas_series.isna()
-                        & python_series.isna()
-                    )
+        # Other data types
+        else:
+
+            mismatch = (
+                sas_series != python_series
+            )
+
+            mismatch = (
+                mismatch
+                & ~(
+                    sas_series.isna()
+                    & python_series.isna()
                 )
+            )
 
-        mismatch_count = mismatch.sum()
+        mismatch_count = int(
+            mismatch.sum()
+        )
 
         if mismatch_count > 0:
 
             differences.append(
                 {
                     "column": column,
-                    "differences": int(
-                        mismatch_count
-                    ),
+                    "differences": mismatch_count,
                 }
             )
 
     # ---------------------------------------------------------
-    # 7. Report differences
+    # 8. Report differences
     # ---------------------------------------------------------
 
     if differences:
@@ -207,29 +260,43 @@ def reconcile_outputs(
 
     print("✓ All data values matched")
 
-    # ---------------------------------------------------------
-    # Final result
-    # ---------------------------------------------------------
-
     print()
     print("=" * 70)
     print("RECONCILIATION PASSED")
     print("=" * 70)
 
 
-if __name__ == "__main__":
+def main():
 
-    sas_output = (
-        Config.PROCESSED_DATA
-        / "claim_detail_sas.csv"
+    parser = argparse.ArgumentParser(
+        description=(
+            "Compare SAS and Python datasets"
+        )
     )
 
-    python_output = (
-        Config.PROCESSED_DATA
-        / "claim_detail.csv"
+    parser.add_argument(
+        "sas_file",
+        help="Path to SAS output CSV",
     )
+
+    parser.add_argument(
+        "python_file",
+        help="Path to Python output CSV",
+    )
+
+    parser.add_argument(
+        "key_column",
+        help="Unique key column",
+    )
+
+    args = parser.parse_args()
 
     reconcile_outputs(
-        sas_output,
-        python_output,
+        Path(args.sas_file),
+        Path(args.python_file),
+        args.key_column,
     )
+
+
+if __name__ == "__main__":
+    main()
